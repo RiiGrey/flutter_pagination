@@ -76,10 +76,10 @@ class _MyHomePageState extends State<MyHomePage> {
             builder: (context, snapshot) {
               if (snapshot.hasData) {
                 originalItems = snapshot.data;
-                items.addAll(originalItems.getRange(present, present + perPage));
+                items.addAll(originalItems.getRange(0, perPage));
                 if (items.length > originalItems.length) {
                   items.clear();
-                  items.addAll(originalItems.getRange(present, originalItems.length));
+                  items.addAll(originalItems.getRange(0, originalItems.length));
                 }
                 return ListView.builder(
                     itemCount:
