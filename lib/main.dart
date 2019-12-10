@@ -29,29 +29,34 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int present = 0;
-  int perPage = 17;
+  int page = 1;
 
-  List<Post> originalItems;
-  var items = List<Post>();
+  Post originalItems;
+  Future<Post> posts;
 
-  loadMore() {
-    return Future.delayed(Duration(milliseconds: 200)).then((value) {
-      setState(() {});
-    });
+  loadMore() async {
+    if (page > originalItems.totalPages) {
+      print('we reach limit');
+    } else {
+      page += 1;
+      Post post = await fetchPost(page);
+      setState(() {
+        originalItems.data.addAll(post.data);
+      });
+    }
   }
 
   @override
   void initState() {
+    posts = fetchPost(page);
     super.initState();
   }
 
-  Future<List<Post>> fetchPost() async {
-    final response = await http.get('https://jsonplaceholder.typicode.com/posts');
-    List jsonData = json.decode(response.body);
+  Future<Post> fetchPost(int page) async {
+    final response = await http.get('https://reqres.in/api/users?page=$page');
     if (response.statusCode == 200) {
-      // If the call to the server was successful, parse the JSON.
-      return jsonData.map((f) => Post.fromJson(f)).toList();
+      print(response.body);
+      return Post.fromJson(json.decode(response.body));
     } else {
       // If that call was not successful, throw an error.
       throw Exception('Failed to load post');
@@ -71,27 +76,18 @@ class _MyHomePageState extends State<MyHomePage> {
             }
             return true;
           },
-          child: FutureBuilder<List<Post>>(
-            future: fetchPost(),
+          child: FutureBuilder<Post>(
+            future: posts,
             builder: (context, snapshot) {
               if (snapshot.hasData) {
                 originalItems = snapshot.data;
-                items.addAll(originalItems.getRange(0, perPage));
-                if (items.length > originalItems.length) {
-                  items.clear();
-                  items.addAll(originalItems.getRange(0, originalItems.length));
-                }
                 return ListView.builder(
-                    itemCount:
-                        (items.length < originalItems.length) ? items.length + 1 : items.length,
+                    itemCount: originalItems.data.length,
                     itemBuilder: (context, index) {
-                      return (index == items.length)
-                          ? Container(
-                              margin: EdgeInsets.all(8),
-                              child: Center(child: CircularProgressIndicator()))
-                          : ListTile(
-                              title: Text(snapshot.data[index].id.toString()),
-                              subtitle: Text(snapshot.data[index].title));
+                      return ListTile(
+                        title: Text(originalItems.data[index].firstName),
+                        subtitle: Text(originalItems.data[index].email),
+                      );
                     });
               } else if (snapshot.hasError) {
                 return Text("${snapshot.error}");
@@ -106,19 +102,65 @@ class _MyHomePageState extends State<MyHomePage> {
 }
 
 class Post {
-  final int userId;
-  final int id;
-  final String title;
-  final String body;
+  int page;
+  int perPage;
+  int total;
+  int totalPages;
+  List<Data> data;
 
-  Post({this.userId, this.id, this.title, this.body});
+  Post({
+    this.page,
+    this.perPage,
+    this.total,
+    this.totalPages,
+    this.data,
+  });
 
-  factory Post.fromJson(Map<String, dynamic> json) {
-    return Post(
-      userId: json['userId'],
-      id: json['id'],
-      title: json['title'],
-      body: json['body'],
-    );
-  }
+  factory Post.fromJson(Map<String, dynamic> json) => Post(
+        page: json["page"] == null ? null : json["page"],
+        perPage: json["per_page"] == null ? null : json["per_page"],
+        total: json["total"] == null ? null : json["total"],
+        totalPages: json["total_pages"] == null ? null : json["total_pages"],
+        data: json["data"] == null ? null : List<Data>.from(json["data"].map((x) => Data.fromJson(x))),
+      );
+
+  Map<String, dynamic> toJson() => {
+        "page": page == null ? null : page,
+        "per_page": perPage == null ? null : perPage,
+        "total": total == null ? null : total,
+        "total_pages": totalPages == null ? null : totalPages,
+        "data": data == null ? null : List<dynamic>.from(data.map((x) => x.toJson())),
+      };
+}
+
+class Data {
+  int id;
+  String email;
+  String firstName;
+  String lastName;
+  String avatar;
+
+  Data({
+    this.id,
+    this.email,
+    this.firstName,
+    this.lastName,
+    this.avatar,
+  });
+
+  factory Data.fromJson(Map<String, dynamic> json) => Data(
+        id: json["id"] == null ? null : json["id"],
+        email: json["email"] == null ? null : json["email"],
+        firstName: json["first_name"] == null ? null : json["first_name"],
+        lastName: json["last_name"] == null ? null : json["last_name"],
+        avatar: json["avatar"] == null ? null : json["avatar"],
+      );
+
+  Map<String, dynamic> toJson() => {
+        "id": id == null ? null : id,
+        "email": email == null ? null : email,
+        "first_name": firstName == null ? null : firstName,
+        "last_name": lastName == null ? null : lastName,
+        "avatar": avatar == null ? null : avatar,
+      };
 }
